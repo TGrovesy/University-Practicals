@@ -2,11 +2,11 @@ package com.grovesy.onlinedrawingapp;
 
 import java.awt.Graphics;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -18,6 +18,7 @@ public class Canvas extends JPanel {
 
 	private int[] mousePos = new int[2];
 	DrawingMouseMotionListener mouseListener;
+	DrawingMouseListener mouseListen;
 
 	private final int MAX_PIXEL_COUNT = 100000;
 	private int[][] freehandXY = new int[MAX_PIXEL_COUNT][3];
@@ -25,8 +26,10 @@ public class Canvas extends JPanel {
 
 	public Canvas(boolean isServer) {
 		mouseListener = new DrawingMouseMotionListener();
+		mouseListen = new DrawingMouseListener();
 		if (!isServer) {
 			this.addMouseMotionListener(mouseListener);
+			this.addMouseListener(mouseListen);
 			ConnectServer();
 		}
 	}
@@ -66,7 +69,7 @@ public class Canvas extends JPanel {
 	}
 
 	public void CloseConnection() {
-		send("Quitzn");
+		send("Quit\n");
 		try {
 			socket.close();
 		} catch (IOException e) {
@@ -86,20 +89,20 @@ public class Canvas extends JPanel {
 			System.out.println("Response: " + response);
 			return response;
 		}
-		
+
 		return "";
 	}
-	
+
 	private void FetchCanvasFromServer() {
-		String serialCanvas = send("fetch");
-		String [] serialCanvasStringArray = serialCanvas.split(",");
-		int pointer = 0;
-		for(int i = 0; i < freehandXY.length; i++) {
-			freehandXY[i][0] = Integer.parseInt(serialCanvasStringArray[pointer++]);
-			freehandXY[i][1] = Integer.parseInt(serialCanvasStringArray[pointer++]);
+		try {
+			send("fetch");
+			ObjectInputStream inFromServer = new ObjectInputStream(socket.getInputStream());
+			freehandXY = (int[][]) inFromServer.readObject();
+
+			repaint();
+		} catch (IOException | ClassNotFoundException e) {
+
 		}
-		repaint();
-		
 	}
 
 	public int[][] getFreehandXY() {
@@ -136,13 +139,33 @@ public class Canvas extends JPanel {
 			mousePosString = String.format("%04dpix, %04dpix", event.getX(), event.getY());
 			mousePos[0] = event.getX();
 			mousePos[1] = event.getY();
-			//FetchCanvasFromServer();
 
 		}
 
 		public int[] GetMousePos() {
 			return mousePos;
 		}
+	}
+
+	class DrawingMouseListener implements MouseListener {
+
+		public void mousePressed(MouseEvent e) {
+		}
+
+		public void mouseReleased(MouseEvent e) {
+			FetchCanvasFromServer();
+		}
+
+		public void mouseEntered(MouseEvent e) {
+		}
+
+		public void mouseExited(MouseEvent e) {
+			
+		}
+
+		public void mouseClicked(MouseEvent e) {
+		}
+
 	}
 
 }

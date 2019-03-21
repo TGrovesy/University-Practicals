@@ -1,6 +1,7 @@
 package com.grovesy.onlinedrawingapp;
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
@@ -11,6 +12,8 @@ public class CanvasService implements Runnable {
 
 	private Scanner in;
 	private PrintWriter out;
+
+	private ObjectOutputStream outBigData;
 
 	private Canvas canvas;
 
@@ -29,6 +32,7 @@ public class CanvasService implements Runnable {
 
 				in = new Scanner(socket.getInputStream());
 				out = new PrintWriter(socket.getOutputStream());
+				outBigData = new ObjectOutputStream(socket.getOutputStream());
 				running = true;
 				ServeClient();
 
@@ -64,13 +68,12 @@ public class CanvasService implements Runnable {
 	}
 
 	private void UpdateClientCanvas() {
-		String response = "";
-		for (int i = 0; i < canvas.getFreehandXY().length; i++) {
-			response += canvas.getFreehandXY()[i][0] + "," + canvas.getFreehandXY()[1];
+		try {
+			outBigData.writeObject(canvas.getFreehandXY());
+			outBigData.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		response+="\n";
-		out.println(response);
-		out.flush();
 	}
 
 	private void ExecuteCommand(String command) {
